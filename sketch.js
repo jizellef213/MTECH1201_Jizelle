@@ -1,0 +1,86 @@
+ // jizelle f.
+// ss4_jizellef
+// theme: uncertainty. i'm doing stuff with volcanoes because you never 
+// really know when they're gonna blow up. it's like a lot of tension 
+// building up until it just gets messy. this first one is just 
+// a shaky mountain and some lava shapes.
+
+let shake = 0;
+let lavaHeight = 100; // where the lava starts
+let erupt = false;
+let cloudMove = 0;
+
+function setup() {
+  createCanvas(650, 550); // weird size looks more manual
+}
+
+function draw() {
+  background(135, 206, 235); // sky blue
+  
+  // clouds - just drawing them manually instead of a loop
+  noStroke();
+  fill(255);
+  ellipse(100 + cloudMove, 80, 60, 40);
+  ellipse(130 + cloudMove, 90, 50, 30);
+  ellipse(400 + cloudMove, 60, 80, 40);
+  
+  cloudMove = cloudMove + 0.3; // slow drift
+  if (cloudMove > 650) {
+    cloudMove = -150;
+  }
+
+  // ground
+  fill(34, 139, 34);
+  rect(0, 450, 650, 100);
+
+  // mouse tremor logic
+  // if mouse is on the right side, it shakes more
+  if (mouseX > 325) {
+    shake = 6; 
+  } else {
+    shake = 1;
+  }
+
+  // random offsets for the shake
+  let rx = random(-shake, shake);
+  let ry = random(-shake, shake);
+
+  // the volcano (triangle)
+  fill(100, 80, 60);
+  triangle(150 + rx, 450, 325 + rx, 100, 500 + rx, 450);
+  
+  // the crater hole
+  fill(50);
+  ellipse(325 + rx, 105, 70, 20);
+
+  // lava stuff
+  if (erupt == true) {
+    fill(255, 69, 0); // orangey red
+    
+    // drawing a few circles for lava "blobs"
+    ellipse(325 + random(-10, 10), lavaHeight, 35, 35);
+    ellipse(310 + random(-5, 5), lavaHeight + 20, 25, 25);
+    ellipse(340 + random(-5, 5), lavaHeight + 20, 25, 25);
+    
+    lavaHeight = lavaHeight - 4; // make it go up
+    
+    if (lavaHeight < -20) {
+      erupt = false;
+      lavaHeight = 100;
+    }
+  }
+}
+
+// making it erupt on click
+function mousePressed() {
+  erupt = true;
+}
+
+// reset with the r key
+function keyPressed() {
+  if (key == 'r' || key == 'R') {
+    erupt = false;
+    lavaHeight = 100;
+    cloudMove = 0;
+  }
+}
