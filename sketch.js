@@ -1,0 +1,532 @@
+ // -SYSTEM CONFIGURATION -
+let currentExperience = "MENU"; 
+
+// - STUDY 1 VARIABLES (Vines) -
+let vines = [];
+
+// - STUDY 2 VARIABLES (Fireflies + Splat!) -
+let fireflies = [];
+
+// -- EXPANDED ANACONDA CHASE VARIABLES --
+let gameState = "START"; 
+let playerX, playerY;
+let playerSpeed = 6.5;
+
+// Snake Specs
+let snakeSegments = [];
+let numSegments = 22;     
+let segmentDist = 20;     
+let snakeHeadX, snakeHeadY;
+let snakeSpeed = 4.5;     
+let selectedLevelName = "Normal";
+
+// Obstacles
+let obstacles = [];
+let distanceTraveled = 0;
+let gameScore = 0;
+
+function setup() {
+  createCanvas(800, 600);
+  initVines();
+  initFireflies();
+  resetChaseGame();
+}
+
+function draw() {
+  background(10, 20, 12); // dark jungle vibe
+  
+  if (currentExperience === "MENU") {
+    drawJungleMenu();
+  } else if (currentExperience === "STUDY_1") {
+    runVineStudy();
+    drawNavigationOverlay("Ecosystem Study A: Vine Growth");
+  } else if (currentExperience === "STUDY_2") {
+    runFireflyStudy();
+    drawNavigationOverlay("Ecosystem Study B: Tap to Splat Fireflies");
+  } else if (currentExperience === "LEVEL_SELECT") {
+    drawLevelSelectScreen();
+    drawNavigationOverlay("Select Difficulty Level");
+  } else if (currentExperience === "EXPANDED_GAME") {
+    runSnakeChaseGame();
+    drawNavigationOverlay("Canopy Run: The Anaconda Chase");
+  }
+}
+
+// =========================================================================
+// MAIN MENU
+// =========================================================================
+function drawJungleMenu() {
+  textAlign(CENTER, CENTER);
+  textFont("Helvetica");
+  
+  fill(34, 139, 34, 40);
+  textSize(38);
+  text("RAINFOREST SYSTEM COMPILATION", width / 2 + 2, 122);
+  
+  fill(160, 240, 170);
+  textSize(38);
+  text("RAINFOREST SYSTEM COMPILATION", width / 2, 120);
+  
+  fill(100, 150, 120);
+  textSize(15);
+  text("Interactive Code Portfolio • Fall Semester", width / 2, 165);
+  
+  renderMenuButton("1. Click to Stop Vine From Growing", width / 2, 260, "STUDY_1");
+  renderMenuButton("2. Bioluminescent Firefly Swarms (Splat Mode)", width / 2, 340, "STUDY_2");
+  renderMenuButton("3. LAUNCH: Anaconda Chase Game", width / 2, 420, "LEVEL_SELECT");
+}
+
+function renderMenuButton(label, x, y, destination) {
+  let w = 420;
+  let h = 55;
+  let isHovered = mouseX > x - w/2 && mouseX < x + w/2 && mouseY > y - h/2 && mouseY < y + h/2;
+  
+  rectMode(CENTER);
+  if (isHovered) {
+    fill(20, 55, 30);
+    stroke(160, 240, 170);
+    strokeWeight(2);
+    cursor(HAND);
+  } else {
+    fill(15, 30, 20);
+    stroke(45, 80, 55);
+    strokeWeight(1);
+  }
+  rect(x, y, w, h, 6);
+  
+  noStroke();
+  fill(isHovered ? 255 : 200);
+  textSize(16);
+  text(label, x, y);
+}
+
+function drawNavigationOverlay(title) {
+  fill(8, 16, 10, 240);
+  noStroke();
+  rectMode(CORNER);
+  rect(0, 0, width, 65);
+  
+  textAlign(LEFT, CENTER);
+  fill(140, 200, 155);
+  textSize(15);
+  text(title, 160, 32);
+  
+  let isHovered = mouseX > 25 && mouseX < 135 && mouseY > 17 && mouseY < 47;
+  fill(isHovered ? color(150, 50, 50) : color(35, 20, 20));
+  stroke(80, 40, 40);
+  rect(25, 17, 110, 30, 4);
+  
+  noStroke();
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(13);
+  text("← MENU", 80, 32);
+}
+
+// =========================================================================
+// LEVEL SELECT
+// =========================================================================
+function drawLevelSelectScreen() {
+  textAlign(CENTER, CENTER);
+  fill(220, 255, 225);
+  textSize(26);
+  text("CHOOSE THE ANACONDA'S AGGRESSION LEVEL", width / 2, 160);
+  
+  textSize(14);
+  fill(130, 160, 140);
+  text("This configures the base tracking velocity of the snake.", width / 2, 200);
+  
+  drawLevelCard(width / 2 - 180, 320, 150, 120, "SLOW", 2.8, color(50, 150, 80));
+  drawLevelCard(width / 2, 320, 150, 120, "NORMAL", 4.5, color(200, 180, 50));
+  drawLevelCard(width / 2 + 180, 320, 150, 120, "REALLY FAST", 6.2, color(220, 70, 70));
+}
+
+function drawLevelCard(x, y, w, h, name, speedVal, clr) {
+  let isHovered = mouseX > x - w/2 && mouseX < x + w/2 && mouseY > y - h/2 && mouseY < y + h/2;
+  
+  rectMode(CENTER);
+  if (isHovered) {
+    fill(30, 45, 35);
+    stroke(clr);
+    strokeWeight(3);
+    cursor(HAND);
+  } else {
+    fill(20, 25, 22);
+    stroke(60, 70, 65);
+    strokeWeight(1);
+  }
+  rect(x, y, w, h, 8);
+  
+  noStroke();
+  fill(clr);
+  textSize(18);
+  text(name, x, y - 20);
+  
+  fill(200);
+  textSize(14);
+  text("Speed: " + speedVal + "px", x, y + 15);
+}
+
+// =========================================================================
+// THE SNAKE CHASE GAME
+// =========================================================================
+function runSnakeChaseGame() {
+  if (gameState === "START") {
+    drawChaseStart();
+  } else if (gameState === "PLAY") {
+    drawChasePlay();
+  } else if (gameState === "GAMEOVER") {
+    drawChaseGameOver();
+  }
+}
+
+function resetChaseGame() {
+  playerX = width / 2;
+  playerY = 160;
+  distanceTraveled = 0;
+  gameScore = 0;
+  obstacles = [];
+  
+  snakeHeadX = width / 2;
+  snakeHeadY = height + 150;
+  
+  snakeSegments = [];
+  for (let i = 0; i < numSegments; i++) {
+    snakeSegments.push({ x: snakeHeadX, y: snakeHeadY + (i * segmentDist) });
+  }
+  
+  gameState = "START";
+}
+
+function drawChaseStart() {
+  textAlign(CENTER, CENTER);
+  fill(240, 255, 240);
+  textSize(30);
+  text("CANOPY RUN: THE CHASE", width / 2, height / 2 - 60);
+  
+  textSize(15);
+  fill(160, 185, 165);
+  text("Mode Active: Snake speed set to [" + selectedLevelName + "]", width / 2, height / 2 - 20);
+  text("Use ARROW KEYS to move and run away!", width / 2, height / 2 + 15);
+  text("Hitting fallen logs will slow you down.", width / 2, height / 2 + 40);
+  
+  fill(100, 240, 140, 160 + sin(frameCount * 0.15) * 95);
+  textSize(17);
+  text("[ PRESS ANY KEY TO START RUNNING ]", width / 2, height / 2 + 100);
+}
+
+function drawChasePlay() {
+  distanceTraveled += 0.1;
+  gameScore = floor(distanceTraveled * 10);
+  
+  if (frameCount % 50 === 0) {
+    obstacles.push({
+      x: random(100, width - 100),
+      y: -50,
+      w: random(80, 170),
+      h: 25
+    });
+  }
+  
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    obstacles[i].y += 4.5;
+    
+    fill(115, 70, 45);
+    stroke(50, 25, 15);
+    strokeWeight(2);
+    rectMode(CENTER);
+    rect(obstacles[i].x, obstacles[i].y, obstacles[i].w, obstacles[i].h, 4);
+    
+    let collision = (
+      obstacles[i].y > playerY - 25 && 
+      obstacles[i].y < playerY + 25 && 
+      obstacles[i].x > playerX - obstacles[i].w/2 - 12 && 
+      obstacles[i].x < obstacles[i].w/2 + playerX + 12
+    );
+    
+    if (collision) {
+      playerY += 7; // pushes player back towards snake fangs
+      fill(220, 40, 40, 90);
+      rect(width/2, height/2, width, height); // red screen flash
+    }
+    
+    if (obstacles[i].y > height + 40) obstacles.splice(i, 1);
+  }
+
+  if (keyIsDown(LEFT_ARROW))  playerX -= playerSpeed;
+  if (keyIsDown(RIGHT_ARROW)) playerX += playerSpeed;
+  if (keyIsDown(UP_ARROW))    playerY -= playerSpeed;
+  if (keyIsDown(DOWN_ARROW))  playerY += playerSpeed;
+  
+  playerX = constrain(playerX, 35, width - 35);
+  playerY = constrain(playerY, 90, height - 25);
+
+  // Detailed snake math tracking player
+  let trackingAngle = atan2(playerY - snakeHeadY, playerX - snakeHeadX);
+  snakeHeadX += cos(trackingAngle) * snakeSpeed;
+  snakeHeadY += sin(trackingAngle) * snakeSpeed;
+  
+  snakeSegments[0] = { x: snakeHeadX, y: snakeHeadY };
+  for (let i = 1; i < numSegments; i++) {
+    let parent = snakeSegments[i - 1];
+    let current = snakeSegments[i];
+    let angleToParent = atan2(current.y - parent.y, current.x - parent.x);
+    
+    current.x = parent.x + cos(angleToParent) * segmentDist;
+    current.y = parent.y + sin(angleToParent) * segmentDist;
+  }
+  
+  // Render detailed snake body scales
+  for (let i = numSegments - 1; i > 0; i--) {
+    let seg = snakeSegments[i];
+    let diameter = map(i, 0, numSegments - 1, 52, 14); 
+    
+    stroke(15, 35, 18);
+    strokeWeight(2);
+    if (i % 2 === 0) {
+      fill(36, 84, 48); // Green scales
+    } else {
+      fill(175, 145, 35); // Yellow warning scales
+    }
+    ellipse(seg.x, seg.y, diameter, diameter);
+    
+    fill(20, 50, 25, 100);
+    noStroke();
+    ellipse(seg.x, seg.y, diameter * 0.6, diameter * 0.3);
+  }
+  
+  // Snake head features
+  push();
+  translate(snakeHeadX, snakeHeadY);
+  rotate(trackingAngle + HALF_PI);
+  
+  stroke(10, 30, 15);
+  strokeWeight(3);
+  fill(28, 71, 41);
+  ellipse(0, 0, 58, 70);
+  
+  fill(175, 145, 35, 180);
+  noStroke();
+  triangle(0, -25, -12, 5, 12, 5);
+  
+  // Glowing snake eyes
+  fill(245, 225, 30);
+  ellipse(-18, -16, 11, 16); 
+  ellipse(18, -16, 11, 16);  
+  fill(5, 10, 5);
+  rectMode(CENTER);
+  rect(-18, -16, 2, 12);      
+  rect(18, -16, 2, 12);
+  
+  // Moving tongue
+  if (frameCount % 24 < 12) {
+    stroke(240, 40, 40);
+    strokeWeight(3);
+    noFill();
+    beginShape();
+    vertex(0, -35);
+    vertex(0, -50);
+    vertex(-8, -58);
+    vertex(0, -50);
+    vertex(8, -58);
+    endShape();
+  }
+  pop();
+  
+  // Draw the runner character
+  stroke(220, 120, 20);
+  strokeWeight(2);
+  fill(255, 175, 50);
+  ellipse(playerX, playerY, 26, 26);
+  fill(255);
+  noStroke();
+  ellipse(playerX - 4, playerY - 3, 4, 4); 
+  ellipse(playerX + 4, playerY - 3, 4, 4);
+
+  // HUD Score
+  fill(0, 0, 0, 160);
+  rectMode(CORNER);
+  rect(width - 190, 80, 165, 45, 4);
+  fill(240);
+  textSize(14);
+  textAlign(LEFT, CENTER);
+  text("DISTANCE: " + gameScore + "m", width - 175, 102);
+  
+  let hitRange = dist(playerX, playerY, snakeHeadX, snakeHeadY);
+  if (hitRange < 38) {
+    gameState = "GAMEOVER";
+  }
+}
+
+function drawChaseGameOver() {
+  textAlign(CENTER, CENTER);
+  fill(240, 80, 80);
+  textSize(34);
+  text("CAUGHT BY THE ANACONDA", width / 2, height / 2 - 40);
+  
+  fill(210);
+  textSize(18);
+  text("Level Checked: " + selectedLevelName, width / 2, height / 2 + 10);
+  text("Your run lasted: " + gameScore + " meters", width / 2, height / 2 + 40);
+  
+  fill(140, 190, 150);
+  textSize(13);
+  text("[ PRESS ANY KEY TO RUN AGAIN ]", width / 2, height / 2 + 100);
+}
+
+// =========================================================================
+// INTERACTIVE FIREFLY (TAP TO SPLAT)
+// =========================================================================
+function initFireflies() {
+  fireflies = [];
+  for (let i = 0; i < 40; i++) {
+    fireflies.push({ 
+      x: random(50, width - 50), 
+      y: random(100, height - 50), 
+      angle: random(TWO_PI), 
+      speed: random(0.5, 1.8),
+      isSplatted: false,
+      splatTimer: 0
+    });
+  }
+}
+
+function runFireflyStudy() {
+  for (let i = fireflies.length - 1; i >= 0; i--) {
+    let f = fireflies[i];
+    
+    if (!f.isSplatted) {
+      f.angle += random(-0.1, 0.1);
+      f.x += cos(f.angle) * f.speed; 
+      f.y += sin(f.angle) * f.speed;
+      
+      if (f.x < 0) f.x = width; 
+      if (f.x > width) f.x = 0;
+      if (f.y < 80) f.y = height; 
+      if (f.y > height) f.y = 80;
+      
+      // glowy fireflies
+      noStroke(); 
+      fill(190, 240, 80, 45); 
+      ellipse(f.x, f.y, 18);
+      fill(240, 255, 150); 
+      ellipse(f.x, f.y, 5);
+    } else {
+      // splatted firefly drops down!
+      f.y += 6; 
+      f.splatTimer--;
+      
+      noStroke();
+      fill(220, 40, 40, map(f.splatTimer, 20, 0, 255, 0));
+      ellipse(f.x, f.y, 15, 8); // squished flat
+      fill(255, 80, 80, map(f.splatTimer, 20, 0, 255, 0));
+      ellipse(f.x, f.y, 6, 4);
+      
+      if (f.splatTimer <= 0 || f.y > height) {
+        fireflies.splice(i, 1);
+      }
+    }
+  }
+  
+  // keep them spawning
+  if (fireflies.length < 15) {
+    fireflies.push({
+      x: random(width), y: 85, angle: random(TWO_PI), speed: random(0.5, 1.8), isSplatted: false, splatTimer: 0
+    });
+  }
+  
+  fill(160, 180, 165); 
+  textSize(13); 
+  textAlign(CENTER); 
+  text("[ TAP / CLICK ON THE FIREFLIES TO SPLAT THEM ]", width/2, height - 35);
+}
+
+// =========================================================================
+// VINE STUDY
+// =========================================================================
+function initVines() {
+  vines = [];
+  for (let i = 0; i < 6; i++) {
+    vines.push({ x: random(width), y: height, segments: [], angle: -HALF_PI, growing: true });
+  }
+}
+
+function runVineStudy() {
+  for (let v of vines) {
+    if (v.growing && random(1) < 0.18) {
+      let lastX = v.segments.length > 0 ? v.segments[v.segments.length - 1].x : v.x;
+      let lastY = v.segments.length > 0 ? v.segments[v.segments.length - 1].y : v.y;
+      v.angle += random(-0.25, 0.25);
+      v.segments.push({ x: lastX + cos(v.angle) * 12, y: lastY + sin(v.angle) * 12 });
+      if (lastY < 80 || v.segments.length > 45) v.growing = false;
+    }
+    noFill(); stroke(70, 140, 85, 180); strokeWeight(3);
+    beginShape(); if(v.segments.length > 0){ vertex(v.x, v.y); for(let s of v.segments) vertex(s.x, s.y); } endShape();
+  }
+  fill(130); textSize(12); textAlign(CENTER); text("[ CLICK STAGE WINDOW TO GERMINATE SEED VINES ]", width/2, height - 30);
+}
+
+// =========================================================================
+// INTERACTION INPUTS
+// =========================================================================
+function mousePressed() {
+  cursor(ARROW);
+  
+  if (currentExperience !== "MENU") {
+    if (mouseX > 25 && mouseX < 135 && mouseY > 17 && mouseY < 47) {
+      currentExperience = "MENU";
+      resetChaseGame();
+      initFireflies(); 
+      return;
+    }
+  }
+  
+  if (currentExperience === "MENU" && mouseX > width/2 - 210 && mouseX < width/2 + 210) {
+    if (mouseY > 260 - 27 && mouseY < 260 + 27) currentExperience = "STUDY_1";
+    if (mouseY > 340 - 27 && mouseY < 340 + 27) currentExperience = "STUDY_2";
+    if (mouseY > 420 - 27 && mouseY < 420 + 27) currentExperience = "LEVEL_SELECT";
+  } 
+  
+  else if (currentExperience === "LEVEL_SELECT") {
+    if (mouseY > 260 && mouseY < 380) {
+      if (mouseX > width/2 - 255 && mouseX < width/2 - 105) {
+        snakeSpeed = 2.8; selectedLevelName = "Slow Slither"; currentExperience = "EXPANDED_GAME";
+      }
+      if (mouseX > width/2 - 75 && mouseX < width/2 + 75) {
+        snakeSpeed = 4.5; selectedLevelName = "Normal Canopy Sprint"; currentExperience = "EXPANDED_GAME";
+      }
+      if (mouseX > width/2 + 105 && mouseX < width/2 + 255) {
+        snakeSpeed = 6.2; selectedLevelName = "Vicious Strike Fast"; currentExperience = "EXPANDED_GAME";
+      }
+    }
+  }
+  
+  else if (currentExperience === "STUDY_2") {
+    for (let f of fireflies) {
+      if (!f.isSplatted) {
+        let clickedBug = dist(mouseX, mouseY, f.x, f.y);
+        if (clickedBug < 18) { 
+          f.isSplatted = true;
+          f.splatTimer = 20; 
+        }
+      }
+    }
+  }
+  
+  else if (currentExperience === "STUDY_1" && mouseY > 75) {
+    vines.push({ x: mouseX, y: height, segments: [], angle: random(-PI, 0), growing: true });
+    if(vines.length > 12) vines.shift();
+  } 
+  
+  else if (currentExperience === "EXPANDED_GAME") {
+    if (gameState === "START") gameState = "PLAY";
+    else if (gameState === "GAMEOVER") resetChaseGame();
+  }
+}
+
+function keyPressed() {
+  if (currentExperience === "EXPANDED_GAME") {
+    if (gameState === "START") gameState = "PLAY";
+    else if (gameState === "GAMEOVER") resetChaseGame();
+  }
+}
